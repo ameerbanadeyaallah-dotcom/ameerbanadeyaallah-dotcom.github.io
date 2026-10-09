@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0a0d14"><title>MATKA Bot Team · Sign in</title>
+<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(1200px 600px at 50% -10%,#1b2140,#0a0d14);color:#e7eaf2;font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+form{width:min(380px,92vw);background:#111522;border:1px solid #232a3d;border-radius:16px;padding:28px;box-shadow:0 20px 60px #0008}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;margin-bottom:6px}.logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#7c5cff,#22c55e);display:inline-block}
+p{color:#8b93a7;margin:0 0 20px;font-size:13px}input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2a3248;background:#0b0f19;color:#fff;font:inherit;outline:none}
+input:focus{border-color:#7c5cff}button{margin-top:14px;width:100%;padding:12px;border:0;border-radius:10px;background:#7c5cff;color:#fff;font-weight:600;font:inherit;cursor:pointer}button:disabled{opacity:.6}
+.err{color:#f87171;font-size:13px;margin-top:10px;min-height:1em}.ft{color:#5d667c;font-size:11px;margin-top:14px}</style></head><body>
+<form id="f"><div class="logo"><i></i>MATKA Bot Team</div><p>Private trading dashboard. Enter the password to continue.</p>
+<input id="pw" type="password" placeholder="Password" autofocus autocomplete="current-password"><button id="b">Sign in</button><div class="err" id="e"></div>
+<div class="ft">Data is end-to-end encrypted and decrypted only in your browser.</div></form>
+<script>
+(()=>{
+const PUB="matka-dabdef8f89eb8238c9816304",STORE='https://textdb.dev/api/data/';
+const ub=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+const $=id=>document.getElementById(id);
+async function env(n){const r=await fetch(STORE+PUB+'-'+n+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('store '+r.status);return r.json()}
+async function dec(k,v){const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:ub(v.iv),additionalData:new TextEncoder().encode(v.kind)},k,ub(v.ct));
+ return new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
+async function show(k,v){const html=await dec(k,v);document.open();document.write(html);document.close()}
+async function fromPw(pw,v){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
+ const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:ub(v.salt),iterations:v.iter},base,256);return bits}
+$('f').onsubmit=async ev=>{ev.preventDefault();$('b').disabled=true;$('e').textContent='';$('b').textContent='Unlocking…';
+ try{const v=await env('ui');const raw=await fromPw($('pw').value,v);const k=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']);
+  let html;try{html=await dec(k,v)}catch(x){throw new Error('Wrong password.')}
+  localStorage.setItem('matka_k',b64(raw));document.open();document.write(html);document.close()}
+ catch(x){$('e').textContent=x.message==='Wrong password.'?x.message:'Could not load dashboard data. Try again in a minute.';$('b').disabled=false;$('b').textContent='Sign in'}};
+(async()=>{const s=localStorage.getItem('matka_k');if(!s)return;try{const k=await crypto.subtle.importKey('raw',ub(s),'AES-GCM',false,['decrypt']);await show(k,await env('ui'))}catch(x){if(String(x).includes('OperationError'))localStorage.removeItem('matka_k')}})();
+})();
+</script></body></html>
